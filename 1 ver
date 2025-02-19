@@ -1,0 +1,517 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+from tkcalendar import Calendar
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
+class DataApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Приложение для Статистики Питания")
+
+        # Устанавливаем размер окна
+        window_width = 1000
+        window_height = 800
+        self.root.geometry(f"{window_width}x{window_height}")
+
+        # Центрируем окно
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        # Делаем окно всегда поверх других окон
+        self.root.attributes("-topmost", True)
+
+        self.data = []
+        self.users = {}
+        self.current_user = None
+        self.diagrams = []
+        self.current_diagram_index = 0
+        self.selected_date = None
+        self.selected_meal_type = None
+        self.product_list = [
+            {"name": "Яблоко", "unit": "г", "proteins": 0.3, "fats": 0.2, "carbs": 14, "calories": 52},
+            {"name": "Банан", "unit": "г", "proteins": 1.1, "fats": 0.3, "carbs": 23, "calories": 89},
+            {"name": "Молоко", "unit": "мл", "proteins": 3.2, "fats": 3.3, "carbs": 4.8, "calories": 61},
+            {"name": "Хлеб", "unit": "г", "proteins": 8.1, "fats": 1.5, "carbs": 49, "calories": 265},
+            {"name": "Куриное филе", "unit": "г", "proteins": 23.6, "fats": 1.9, "carbs": 0, "calories": 110},
+            {"name": "Рис", "unit": "гр", "proteins": 7.0, "fats": 0.6, "carbs": 78, "calories": 345},
+            {"name": "Картофель", "unit": "г", "proteins": 2.0, "fats": 0.1, "carbs": 17, "calories": 77},
+            {"name": "Масло сливочное", "unit": "г", "proteins": 0.5, "fats": 82.5, "carbs": 0.8, "calories": 748},
+            {"name": "Гречка", "unit": "г", "proteins": 12.6, "fats": 3.3, "carbs": 62, "calories": 343},
+            {"name": "Овсянка", "unit": "г", "proteins": 12.3, "fats": 6.2, "carbs": 59, "calories": 389},
+            {"name": "Творог", "unit": "г", "proteins": 16.7, "fats": 9.0, "carbs": 2.0, "calories": 143},
+            {"name": "Кефир", "unit": "мл", "proteins": 3.0, "fats": 3.4, "carbs": 4.0, "calories": 56},
+            {"name": "Яйцо куриное", "unit": "шт", "proteins": 12.7, "fats": 11.5, "carbs": 1.0, "calories": 155},
+            {"name": "Сыр", "unit": "г", "proteins": 23.0, "fats": 30.0, "carbs": 1.5, "calories": 371},
+            {"name": "Помидор", "unit": "г", "proteins": 0.9, "fats": 0.2, "carbs": 4, "calories": 18},
+            {"name": "Огурец", "unit": "г", "proteins": 0.8, "fats": 0.1, "carbs": 2, "calories": 16},
+            {"name": "Морковь", "unit": "г", "proteins": 1.3, "fats": 0.1, "carbs": 9.6, "calories": 41},
+            {"name": "Капуста белокочанная", "unit": "г", "proteins": 1.8, "fats": 0.1, "carbs": 5.4, "calories": 25},
+            {"name": "Свекла", "unit": "г", "proteins": 1.5, "fats": 0.1, "carbs": 10.8, "calories": 43},
+            {"name": "Кабачок", "unit": "г", "proteins": 0.6, "fats": 0.3, "carbs": 4.6, "calories": 27},
+            {"name": "Апельсин", "unit": "г", "proteins": 0.9, "fats": 0.2, "carbs": 8.1, "calories": 47},
+            {"name": "Груша", "unit": "г", "proteins": 0.4, "fats": 0.1, "carbs": 15.2, "calories": 58},
+            {"name": "Вишня", "unit": "г", "proteins": 0.8, "fats": 0.2, "carbs": 10.5, "calories": 50},
+            {"name": "Персик", "unit": "г", "proteins": 0.9, "fats": 0.1, "carbs": 9.5, "calories": 39},
+            {"name": "Малина", "unit": "г", "proteins": 1.2, "fats": 0.6, "carbs": 8.3, "calories": 52},
+            {"name": "Черника", "unit": "г", "proteins": 1.1, "fats": 0.6, "carbs": 8.4, "calories": 57},
+            {"name": "Сметана 20%", "unit": "г", "proteins": 2.8, "fats": 20, "carbs": 3.2, "calories": 198},
+            {"name": "Шоколад", "unit": "г", "proteins": 4.9, "fats": 35.3, "carbs": 52.4, "calories": 546},
+            {"name": "Печенье", "unit": "г", "proteins": 7.5, "fats": 11.8, "carbs": 70, "calories": 484},
+            {"name": "Куриная грудка", "unit": "г", "proteins": 23.6, "fats": 1.9, "carbs": 0.4, "calories": 114},
+            {"name": "Говядина", "unit": "г", "proteins": 19.2, "fats": 12.6, "carbs": 0, "calories": 250},
+            {"name": "Свинина", "unit": "г", "proteins": 16.0, "fats": 21.0, "carbs": 0, "calories": 242},
+            {"name": "Рыба (лосось)", "unit": "г", "proteins": 20.5, "fats": 6.4, "carbs": 0, "calories": 143},
+            {"name": "Креветки", "unit": "г", "proteins": 18.3, "fats": 1.1, "carbs": 0, "calories": 85},
+            {"name": "Тунец консервированный", "unit": "г", "proteins": 23.3, "fats": 1.0, "carbs": 0, "calories": 99},
+            {"name": "Мед", "unit": "г", "proteins": 0.3, "fats": 0.0, "carbs": 82.4, "calories": 304},
+            {"name": "Орехи грецкие", "unit": "г", "proteins": 15.0, "fats": 65.0, "carbs": 14, "calories": 654},
+            {"name": "Миндаль", "unit": "г", "proteins": 20.0, "fats": 53.0, "carbs": 13, "calories": 579},
+            {"name": "Семечки подсолнечника", "unit": "г", "proteins": 20.7, "fats": 52.9, "carbs": 3.4, "calories": 584},
+            {"name": "Арахис", "unit": "г", "proteins": 26.0, "fats": 49.0, "carbs": 16.0, "calories": 567},
+            {"name": "Авокадо", "unit": "г", "proteins": 2.0, "fats": 15.0, "carbs": 8.5, "calories": 160},
+            {"name": "Зелень (укроп)", "unit": "г", "proteins": 2.5, "fats": 0.5, "carbs": 4.0, "calories": 31},
+            {"name": "Шпинат", "unit": "г", "proteins": 2.9, "fats": 0.3, "carbs": 2.0, "calories": 23},
+            {"name": "Брокколи", "unit": "г", "proteins": 2.8, "fats": 0.4, "carbs": 7.2, "calories": 55},
+            {"name": "Кофе (без сахара)", "unit": "мл", "proteins": 0.3, "fats": 0, "carbs": 0, "calories": 2},
+            {"name": "Чай (без сахара)", "unit": "мл", "proteins": 0, "fats": 0, "carbs": 0, "calories": 2},
+            {"name": "Вода", "unit": "мл", "proteins": 0, "fats": 0, "carbs": 0, "calories": 0},
+            {"name": "Сок апельсиновый", "unit": "мл", "proteins": 0.9, "fats": 0.2, "carbs": 8.4, "calories": 45},
+            {"name": "Квас", "unit": "мл", "proteins": 0.2, "fats": 0, "carbs": 5.2, "calories": 26},
+            {"name": "Гранат", "unit": "г", "proteins": 0.9, "fats": 0.3, "carbs": 16.5, "calories": 68},
+            {"name": "Перец сладкий", "unit": "г", "proteins": 1.3, "fats": 0.0, "carbs": 6.0, "calories": 31},
+            {"name": "Лук репчатый", "unit": "г", "proteins": 1.4, "fats": 0.1, "carbs": 9.0, "calories": 40},
+            {"name": "Чеснок", "unit": "г", "proteins": 6.5, "fats": 0.5, "carbs": 33, "calories": 149},
+            {"name": "Имбирь", "unit": "г", "proteins": 1.8, "fats": 0.8, "carbs": 15.8, "calories": 80},
+            {"name": "Куриный бульон", "unit": "мл", "proteins": 3.3, "fats": 1.5, "carbs": 0, "calories": 17},
+            {"name": "Макароны", "unit": "г", "proteins": 10.4, "fats": 1.1, "carbs": 71, "calories": 371},
+            {"name": "Колбаса вареная", "unit": "г", "proteins": 13.0, "fats": 20.0, "carbs": 1.5, "calories": 234},
+            {"name": "Сахар", "unit": "г", "proteins": 0.0, "fats": 0.0, "carbs": 99.8, "calories": 398},
+            {"name": "Соль", "unit": "г", "proteins": 0.0, "fats": 0.0, "carbs": 0.0, "calories": 0},
+            {"name": "Перец черный", "unit": "г", "proteins": 10.4, "fats": 3.3, "carbs": 38.3, "calories": 251},
+            {"name": "Кукуруза", "unit": "г", "proteins": 3.4, "fats": 1.2, "carbs": 22.5, "calories": 96},
+            {"name": "Консервированный горошек", "unit": "г", "proteins": 5.2, "fats": 0.4, "carbs": 8.9, "calories": 81},
+            {"name": "Капуста цветная", "unit": "г", "proteins": 2.5, "fats": 0.3, "carbs": 4.9, "calories": 34},
+            {"name": "Редька", "unit": "г", "proteins": 1.2, "fats": 0.1, "carbs": 3.4, "calories": 16},
+            {"name": "Сельдерей", "unit": "г", "proteins": 0.9, "fats": 0.1, "carbs": 2.2, "calories": 16},
+            {"name": "Баклажан", "unit": "г", "proteins": 1.2, "fats": 0.1, "carbs": 4.8, "calories": 25},
+            {"name": "Петрушка", "unit": "г", "proteins": 3.7, "fats": 0.4, "carbs": 7.6, "calories": 49},
+            {"name": "Кабачки", "unit": "г", "proteins": 1.0, "fats": 0.3, "carbs": 3.1, "calories": 17},
+            {"name": "Мороженое", "unit": "г", "proteins": 3.7, "fats": 6.9, "carbs": 24.0, "calories": 137},
+            {"name": "Сливки 10%", "unit": "мл", "proteins": 3.0, "fats": 10.0, "carbs": 4.0, "calories": 123},
+            {"name": "Пельмени", "unit": "г", "proteins": 12.0, "fats": 12.0, "carbs": 22.0, "calories": 298},
+            {"name": "Соевый соус", "unit": "мл", "proteins": 5.0, "fats": 0.0, "carbs": 4.9, "calories": 53},
+            {"name": "Гречневая каша", "unit": "г", "proteins": 4.5, "fats": 1.7, "carbs": 25.0, "calories": 116},
+            {"name": "Манго", "unit": "г", "proteins": 0.5, "fats": 0.3, "carbs": 14.0, "calories": 60},
+            {"name": "Виноград", "unit": "г", "proteins": 0.6, "fats": 0.2, "carbs": 17.0, "calories": 69},
+            {"name": "Перловая крупа", "unit": "г", "proteins": 9.3, "fats": 1.1, "carbs": 73.7, "calories": 339},
+            {"name": "Куриное яйцо", "unit": "шт", "proteins": 12.7, "fats": 10.9, "carbs": 0.8, "calories": 143},
+            {"name": "Сосиски", "unit": "г", "proteins": 10.0, "fats": 25.0, "carbs": 1.5, "calories": 266},
+            {"name": "Чипсы", "unit": "г", "proteins": 6.6, "fats": 35.0, "carbs": 52.0, "calories": 536},
+            {"name": "Булочка", "unit": "г", "proteins": 8.0, "fats": 4.5, "carbs": 50.0, "calories": 265},
+            {"name": "Йогурт", "unit": "мл", "proteins": 5.0, "fats": 1.5, "carbs": 12.0, "calories": 70},
+            {"name": "Томатная паста", "unit": "г", "proteins": 4.8, "fats": 0.5, "carbs": 19.0, "calories": 97},
+            {"name": "Сало", "unit": "г", "proteins": 2.0, "fats": 89.0, "carbs": 0, "calories": 899}
+            # Добавьте больше продуктов по мере необходимости
+        ]
+        self.daily_norms = {
+            "calories": 2000,
+            "proteins": 50,
+            "fats": 70,
+            "carbs": 300
+        }
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.create_login_widgets()
+        self.create_main_widgets()
+        self.show_login_widgets()
+
+    def create_login_widgets(self):
+        self.login_frame = ttk.Frame(self.root)
+
+        self.label_name = ttk.Label(self.login_frame, text="Имя:", font=("Helvetica", 14))
+        self.label_name.grid(row=0, column=0, padx=10, pady=10)
+        self.entry_name = ttk.Entry(self.login_frame, font=("Helvetica", 14))
+        self.entry_name.grid(row=0, column=1, padx=10, pady=10)
+        self.entry_name.bind("<Return>", lambda event: self.entry_surname.focus_set())
+
+        self.label_surname = ttk.Label(self.login_frame, text="Фамилия:", font=("Helvetica", 14))
+        self.label_surname.grid(row=1, column=0, padx=10, pady=10)
+        self.entry_surname = ttk.Entry(self.login_frame, font=("Helvetica", 14))
+        self.entry_surname.grid(row=1, column=1, padx=10, pady=10)
+        self.entry_surname.bind("<Return>", lambda event: self.entry_password.focus_set())
+
+        self.label_password = ttk.Label(self.login_frame, text="Пароль:", font=("Helvetica", 14))
+        self.label_password.grid(row=2, column=0, padx=10, pady=10)
+        self.entry_password = ttk.Entry(self.login_frame, show="*", font=("Helvetica", 14))
+        self.entry_password.grid(row=2, column=1, padx=10, pady=10)
+        self.entry_password.bind("<Return>", self.login_on_enter)
+
+        self.login_button = tk.Button(self.login_frame, text="Войти", command=self.login, font=("Helvetica", 14))
+        self.login_button.grid(row=3, column=0, columnspan=2, pady=10)
+
+        self.register_button = tk.Button(self.login_frame, text="Зарегистрироваться", command=self.register, font=("Helvetica", 14))
+        self.register_button.grid(row=4, column=0, columnspan=2, pady=10)
+
+        self.error_label = ttk.Label(self.login_frame, text="", foreground="red", font=("Helvetica", 12))
+        self.error_label.grid(row=5, column=0, columnspan=2, pady=10)
+
+    def create_main_widgets(self):
+        self.main_frame = ttk.Frame(self.root)
+
+        self.calendar_frame = ttk.Frame(self.main_frame)
+        self.calendar_frame.pack(pady=10)
+
+        self.calendar = Calendar(self.calendar_frame, selectmode='day', date_pattern='yyyy-mm-dd')
+        self.calendar.pack(pady=10)
+        self.calendar.bind("<<CalendarSelected>>", self.on_date_select)
+
+        self.meal_frame = ttk.Frame(self.main_frame)
+
+        self.label_breakfast = ttk.Label(self.meal_frame, text="Завтрак", font=("Helvetica", 14))
+        self.label_breakfast.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        self.add_breakfast_button = tk.Button(self.meal_frame, text="+", command=lambda: self.add_meal_entry("Завтрак"), font=("Helvetica", 12))
+        self.add_breakfast_button.grid(row=0, column=1, padx=10, pady=5, sticky="e")
+
+        self.label_lunch = ttk.Label(self.meal_frame, text="Обед", font=("Helvetica", 14))
+        self.label_lunch.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.add_lunch_button = tk.Button(self.meal_frame, text="+", command=lambda: self.add_meal_entry("Обед"), font=("Helvetica", 12))
+        self.add_lunch_button.grid(row=1, column=1, padx=10, pady=5, sticky="e")
+
+        self.label_dinner = ttk.Label(self.meal_frame, text="Ужин", font=("Helvetica", 14))
+        self.label_dinner.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+        self.add_dinner_button = tk.Button(self.meal_frame, text="+", command=lambda: self.add_meal_entry("Ужин"), font=("Helvetica", 12))
+        self.add_dinner_button.grid(row=2, column=1, padx=10, pady=5, sticky="e")
+
+        self.back_to_calendar_button = tk.Button(self.meal_frame, text="←", command=self.show_calendar, font=("Helvetica", 12))
+        self.back_to_calendar_button.grid(row=3, column=0, columnspan=2, pady=10)
+
+        self.product_var = tk.StringVar()
+        self.product_combobox = ttk.Combobox(self.main_frame, textvariable=self.product_var, font=("Helvetica", 14))
+        self.product_combobox['values'] = [product["name"] for product in self.product_list]
+        self.product_combobox.pack(pady=10)
+        self.product_combobox.bind('<KeyRelease>', self.update_combobox_values)
+        self.product_combobox.bind('<<ComboboxSelected>>', self.on_combobox_select)
+
+        self.label_quantity = ttk.Label(self.main_frame, text="Количество:", font=("Helvetica", 14))
+        self.label_quantity.pack(pady=10)
+
+        self.quantity_entry = ttk.Entry(self.main_frame, width=50, font=("Helvetica", 14))
+        self.quantity_entry.pack(pady=10)
+        self.quantity_entry.bind("<Return>", self.add_data_on_enter)
+
+        self.unit_frame = ttk.Frame(self.main_frame)
+        self.unit_frame.pack(pady=10)
+
+        self.unit_buttons = []
+        units = ["шт", "г", "мл", "л", "ст.л.", "ч.л."]
+        for unit in units:
+            button = tk.Button(self.unit_frame, text=unit, command=lambda u=unit: self.select_unit(u), font=("Helvetica", 12))
+            button.pack(side=tk.LEFT, padx=5)
+            self.unit_buttons.append(button)
+
+        self.add_button = tk.Button(self.main_frame, text="Добавить данные", command=self.add_data, font=("Helvetica", 14))
+        self.add_button.pack(pady=10)
+
+        self.show_button = tk.Button(self.main_frame, text="Показать статистику", command=self.show_statistics, font=("Helvetica", 14))
+        self.show_button.pack(pady=10)
+
+        self.clear_button = tk.Button(self.main_frame, text="Очистить данные", command=self.clear_data, font=("Helvetica", 14))
+        self.clear_button.pack(pady=10)
+
+        self.logout_button = tk.Button(self.main_frame, text="Выйти", command=self.logout, font=("Helvetica", 14))
+        self.logout_button.pack(pady=10)
+
+        self.data_listbox = tk.Listbox(self.main_frame, width=30, height=15, font=("Helvetica", 12))
+        self.data_listbox.pack(side=tk.LEFT, padx=10, pady=10)
+        self.data_listbox.bind("<Triple-1>", self.delete_selected_data)
+
+        self.data_count_label = ttk.Label(self.main_frame, text="Количество данных: 0", font=("Helvetica", 12))
+        self.data_count_label.pack(side=tk.LEFT, padx=10, pady=10)
+
+        self.canvas_frame = ttk.Frame(self.main_frame)
+        self.canvas_frame.pack(side=tk.RIGHT, padx=10, pady=10)
+
+        self.prev_button = tk.Button(self.canvas_frame, text="Предыдущий", command=self.show_previous_diagram, font=("Helvetica", 12))
+        self.prev_button.pack(side=tk.LEFT, padx=5)
+
+        self.next_button = tk.Button(self.canvas_frame, text="Следующий", command=self.show_next_diagram, font=("Helvetica", 12))
+        self.next_button.pack(side=tk.LEFT, padx=5)
+
+        self.error_label_main = ttk.Label(self.main_frame, text="", foreground="red", font=("Helvetica", 12))
+        self.error_label_main.pack(pady=10)
+
+        self.norms_frame = ttk.Frame(self.main_frame)
+        self.norms_frame.pack(pady=10)
+
+        self.label_norms = ttk.Label(self.norms_frame, text="Нормы:", font=("Helvetica", 14))
+        self.label_norms.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+
+        self.entry_calories_norm = ttk.Entry(self.norms_frame, font=("Helvetica", 14))
+        self.entry_calories_norm.grid(row=1, column=1, padx=10, pady=5)
+        self.entry_calories_norm.insert(0, str(self.daily_norms["calories"]))
+
+        self.entry_proteins_norm = ttk.Entry(self.norms_frame, font=("Helvetica", 14))
+        self.entry_proteins_norm.grid(row=2, column=1, padx=10, pady=5)
+        self.entry_proteins_norm.insert(0, str(self.daily_norms["proteins"]))
+
+        self.entry_fats_norm = ttk.Entry(self.norms_frame, font=("Helvetica", 14))
+        self.entry_fats_norm.grid(row=3, column=1, padx=10, pady=5)
+        self.entry_fats_norm.insert(0, str(self.daily_norms["fats"]))
+
+        self.entry_carbs_norm = ttk.Entry(self.norms_frame, font=("Helvetica", 14))
+        self.entry_carbs_norm.grid(row=4, column=1, padx=10, pady=5)
+        self.entry_carbs_norm.insert(0, str(self.daily_norms["carbs"]))
+
+        self.label_calories_norm = ttk.Label(self.norms_frame, text="Калории:", font=("Helvetica", 14))
+        self.label_calories_norm.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+        self.label_proteins_norm = ttk.Label(self.norms_frame, text="Белки:", font=("Helvetica", 14))
+        self.label_proteins_norm.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+
+        self.label_fats_norm = ttk.Label(self.norms_frame, text="Жиры:", font=("Helvetica", 14))
+        self.label_fats_norm.grid(row=3, column=0, padx=10, pady=5, sticky="w")
+
+        self.label_carbs_norm = ttk.Label(self.norms_frame, text="Углеводы:", font=("Helvetica", 14))
+        self.label_carbs_norm.grid(row=4, column=0, padx=10, pady=5, sticky="w")
+
+        self.save_norms_button = tk.Button(self.norms_frame, text="Сохранить нормы", command=self.save_norms, font=("Helvetica", 12))
+        self.save_norms_button.grid(row=5, column=0, columnspan=2, pady=10)
+
+    def show_login_widgets(self):
+        self.main_frame.pack_forget()
+        self.login_frame.pack(padx=10, pady=10)
+
+    def show_main_widgets(self):
+        self.login_frame.pack_forget()
+        self.main_frame.pack(padx=10, pady=10)
+        self.update_data_listbox()
+        self.show_calendar()
+
+    def login(self):
+        name = self.entry_name.get()
+        surname = self.entry_surname.get()
+        password = self.entry_password.get()
+
+        if name and surname and password:
+            user_key = f"{name}_{surname}"
+            if user_key in self.users and self.users[user_key] == password:
+                self.current_user = user_key
+                self.show_main_widgets()
+                self.error_label.config(text="", foreground="red")
+            else:
+                self.error_label.config(text="Неверные учетные данные", foreground="red")
+        else:
+            self.error_label.config(text="Пожалуйста, заполните все поля", foreground="red")
+
+    def login_on_enter(self, event):
+        self.login()
+
+    def register(self):
+        name = self.entry_name.get()
+        surname = self.entry_surname.get()
+        password = self.entry_password.get()
+
+        if name and surname and password:
+            user_key = f"{name}_{surname}"
+            if user_key not in self.users:
+                self.users[user_key] = password
+                self.error_label.config(text="Регистрация успешна!", foreground="green")
+            else:
+                self.error_label.config(text="Пользователь уже существует", foreground="red")
+        else:
+            self.error_label.config(text="Пожалуйста, заполните все поля", foreground="red")
+
+    def logout(self):
+        self.current_user = None
+        self.data = []
+        self.data_listbox.delete(0, tk.END)
+        self.data_count_label.config(text="Количество данных: 0")
+        self.show_login_widgets()
+
+    def add_data(self):
+        product_name = self.product_var.get()
+        quantity = self.quantity_entry.get()
+        unit = self.selected_unit
+
+        if product_name and quantity and unit:
+            try:
+                quantity = float(quantity)
+                product_info = next((p for p in self.product_list if p["name"] == product_name), None)
+                if product_info:
+                    base_unit = product_info["unit"]
+                    if base_unit == unit:
+                        proteins = product_info["proteins"] * quantity
+                        fats = product_info["fats"] * quantity
+                        carbs = product_info["carbs"] * quantity
+                        calories = product_info["calories"] * quantity
+                    else:
+                        self.error_label_main.config(text="Несовпадение единиц измерения", foreground="red")
+                        return
+                    self.data.append((self.selected_date, self.selected_meal_type, product_name, proteins, fats, carbs, calories))
+                    self.quantity_entry.delete(0, tk.END)
+                    self.update_data_listbox()
+                    self.error_label_main.config(text="Данные успешно добавлены!", foreground="green")
+                else:
+                    self.error_label_main.config(text="Продукт не найден", foreground="red")
+            except ValueError:
+                self.error_label_main.config(text="Пожалуйста, введите корректное количество.", foreground="red")
+        else:
+            self.error_label_main.config(text="Пожалуйста, заполните все поля.", foreground="red")
+
+    def add_data_on_enter(self, event):
+        self.add_data()
+
+    def delete_selected_data(self, event):
+        selected_indices = self.data_listbox.curselection()
+        if selected_indices:
+            for index in selected_indices[::-1]:
+                del self.data[index]
+            self.update_data_listbox()
+            self.error_label_main.config(text="Данные успешно удалены!", foreground="green")
+
+    def update_data_listbox(self):
+        self.data_listbox.delete(0, tk.END)
+        for item in self.data:
+            self.data_listbox.insert(tk.END, f"{item[2]}: Белки={item[3]:.2f}, Жиры={item[4]:.2f}, Углеводы={item[5]:.2f}, Калории={item[6]:.2f}")
+        self.data_count_label.config(text=f"Количество данных: {len(self.data)}")
+
+    def show_statistics(self):
+        if not self.data:
+            self.error_label_main.config(text="Нет данных для отображения статистики.", foreground="red")
+            return
+
+        proteins, fats, carbs, calories = self.calculate_statistics()
+
+        fig, ax = plt.subplots(figsize=(8, 6), dpi=100)
+        ax.bar(['Белки', 'Жиры', 'Углеводы', 'Калории'], [proteins, fats, carbs, calories / 10], color=['blue', 'green', 'red', 'purple'])
+        ax.set_ylabel('Количество')
+        ax.set_title('Статистика питания')
+
+        # Add norms and differences
+        norm_proteins = float(self.entry_proteins_norm.get())
+        norm_fats = float(self.entry_fats_norm.get())
+        norm_carbs = float(self.entry_carbs_norm.get())
+        norm_calories = float(self.entry_calories_norm.get()) / 10
+
+        diff_proteins = proteins - norm_proteins
+        diff_fats = fats - norm_fats
+        diff_carbs = carbs - norm_carbs
+        diff_calories = (calories / 10) - norm_calories
+
+        ax.axhline(y=norm_proteins, color='blue', linestyle='--', label=f'Норма белков: {norm_proteins} г')
+        ax.axhline(y=norm_fats, color='green', linestyle='--', label=f'Норма жиров: {norm_fats} г')
+        ax.axhline(y=norm_carbs, color='red', linestyle='--', label=f'Норма углеводов: {norm_carbs} г')
+        ax.axhline(y=norm_calories, color='purple', linestyle='--', label=f'Норма калорий: {norm_calories * 10} ккал')
+
+        ax.legend()
+
+        canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
+        canvas.draw()
+        self.diagrams.append(canvas.get_tk_widget())
+        self.current_diagram_index = len(self.diagrams) - 1
+        self.show_current_diagram()
+
+        # Display differences in the label
+        self.error_label_main.config(text=f"Разница от нормы: Белки={diff_proteins:.2f} г, Жиры={diff_fats:.2f} г, Углеводы={diff_carbs:.2f} г, Калории={diff_calories * 10:.2f} ккал", foreground="black")
+
+    def show_current_diagram(self):
+        for widget in self.canvas_frame.winfo_children():
+            if isinstance(widget, ttk.Button):
+                continue
+            widget.pack_forget()
+        if self.diagrams:
+            self.diagrams[self.current_diagram_index].pack()
+
+    def show_previous_diagram(self):
+        if self.current_diagram_index > 0:
+            self.current_diagram_index -= 1
+            self.show_current_diagram()
+
+    def show_next_diagram(self):
+        if self.current_diagram_index < len(self.diagrams) - 1:
+            self.current_diagram_index += 1
+            self.show_current_diagram()
+
+    def calculate_statistics(self):
+        proteins = sum(item[3] for item in self.data)
+        fats = sum(item[4] for item in self.data)
+        carbs = sum(item[5] for item in self.data)
+        calories = sum(item[6] for item in self.data)
+        return proteins, fats, carbs, calories
+
+    def clear_data(self):
+        self.data = []
+        self.data_listbox.delete(0, tk.END)
+        self.data_count_label.config(text="Количество данных: 0")
+        self.error_label_main.config(text="Данные успешно очищены!", foreground="green")
+        self.diagrams = []
+        self.current_diagram_index = 0
+        self.show_current_diagram()
+
+    def update_combobox_values(self, event):
+        # Получаем текущий ввод пользователя
+        input_text = self.product_var.get().lower()
+
+        # Фильтруем список продуктов на основе введенного текста
+        filtered_products = [product for product in self.product_list if input_text in product["name"].lower()]
+
+        # Сортируем продукты: сначала те, которые начинаются с введенного текста, затем остальные
+        filtered_products.sort(key=lambda x: (not x["name"].lower().startswith(input_text), x["name"].lower()))
+
+        # Обновляем значения в Combobox
+        self.product_combobox['values'] = [product["name"] for product in filtered_products]
+
+    def on_combobox_select(self, event):
+        # Обработка выбора элемента из Combobox
+        selected_product = self.product_var.get()
+        # Здесь можно добавить дополнительную логику при выборе продукта
+
+    def select_unit(self, unit):
+        self.selected_unit = unit
+        for button in self.unit_buttons:
+            button.config(relief=tk.RAISED)
+        button = next(b for b in self.unit_buttons if b.cget("text") == unit)
+        button.config(relief=tk.SUNKEN)
+
+    def on_date_select(self, event):
+        self.selected_date = self.calendar.get_date()
+        self.show_meal_entries()
+
+    def show_calendar(self):
+        self.meal_frame.pack_forget()
+        self.calendar_frame.pack(pady=10)
+
+    def show_meal_entries(self):
+        self.calendar_frame.pack_forget()
+        self.meal_frame.pack(pady=10)
+
+    def add_meal_entry(self, meal_type):
+        self.selected_meal_type = meal_type
+        self.error_label_main.config(text=f"Выбран прием пищи: {meal_type}", foreground="black")
+
+    def save_norms(self):
+        try:
+            calories_norm = float(self.entry_calories_norm.get())
+            proteins_norm = float(self.entry_proteins_norm.get())
+            fats_norm = float(self.entry_fats_norm.get())
+            carbs_norm = float(self.entry_carbs_norm.get())
+
+            self.daily_norms["calories"] = calories_norm
+            self.daily_norms["proteins"] = proteins_norm
+            self.daily_norms["fats"] = fats_norm
+            self.daily_norms["carbs"] = carbs_norm
+
+            self.error_label_main.config(text="Нормы успешно сохранены!", foreground="green")
+        except ValueError:
+            self.error_label_main.config(text="Пожалуйста, введите корректные значения для норм.", foreground="red")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = DataApp(root)
+    root.mainloop()
